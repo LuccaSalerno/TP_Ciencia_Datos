@@ -8,6 +8,7 @@ import numpy as np
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from fastapi.responses import JSONResponse
+from sklearn.metrics import mean_absolute_error, r2_score
 
 app = FastAPI()
 
@@ -35,12 +36,29 @@ eda = EDAMaizArcorMejorado(dataset_paths)
 insights, df_maiz = eda.ejecutar_eda_completo_mejorado()
 ml_extension, mejor_modelo = extender_eda_con_ml(eda)
 
+# @app.get("/api/predicciones/maiz")
+# def get_predicciones_maiz():
+#     df = ml_extension.df_ml.copy()
+#     df = df.tail(12).reset_index()
+#     df['fecha'] = df['fecha'].astype(str)
+#     return df.to_dict(orient="records")
+
 @app.get("/api/predicciones/maiz")
 def get_predicciones_maiz():
     df = ml_extension.df_ml.copy()
-    df = df.tail(12).reset_index()
+    modelo = ml_extension.models[mejor_modelo]['modelo']
+
+    # Predecir sobre todo el dataset
+    X = df[ml_extension.features].copy()
+    X = X.fillna(0)
+
+    y_pred = modelo.predict(X)
+
+    df['prediccion'] = y_pred
+    df = df.tail(24).reset_index()
     df['fecha'] = df['fecha'].astype(str)
-    return df.to_dict(orient="records")
+
+    return df[['fecha', 'precio_maiz', 'prediccion']].rename(columns={'precio_maiz': 'precio'}).to_dict(orient="records")
 
 @app.get("/api/insights")
 def get_insights():
@@ -106,3 +124,34 @@ def obtener_escenarios():
     ]
 
     return escenarios
+
+@app.get("/api/historico/maiz")
+def get_historico_maiz():
+    df_maiz = ml_extension.df_ml.copy()
+    df_maiz = df_maiz.reset_index()
+    df_maiz['fecha'] = df_maiz['fecha'].astype(str)
+    df_maiz = df_maiz.tail(24)
+    
+    return df_maiz[['fecha', 'precio_maiz']].to_dict(orient="records")
+
+@app.get("/api/evaluacion_modelos")
+def evaluacion_modelos():
+    resultados = []
+    for nombre, data in ml_extension.models.items():
+        modelo = data["modelo"]
+        X = ml_extension.df_ml[ml_extension.features].copy().fillna(0)
+        y_true = ml_extension.df_ml[ml_extension.target]
+        y_pred = modelo.predict(X)
+
+        mae = mean_absolute_error(y_true, y_pred)
+        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+        r2 = r2_score(y_true, y_pred)
+
+        resultados.append({
+            "nombre": nombre,
+            "mae": mae,
+            "mape": mape,
+            "r2": r2
+        })
+    return resultados
+

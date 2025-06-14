@@ -1,0 +1,14 @@
+{
+	"name": "🔩 Frontend",
+	"dockerComposeFile": ["../../compose.yml"],
+	"workspaceFolder": "/app",
+	"service": "frontend",
+	"overrideCommand": true,
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"GitHub.copilot"
+			]
+		}
+	}
+}
