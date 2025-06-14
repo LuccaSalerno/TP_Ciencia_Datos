@@ -1,91 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, ScatterChart, Scatter } from 'recharts';
-import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Calendar, Cloud, Globe, BarChart3, Settings, Bell } from 'lucide-react';
-
-// Datos simulados para el prototipo
-const generateHistoricalData = (commodity, months = 24) => {
-  const data = [];
-  const basePrice = commodity === 'azucar' ? 800 : commodity === 'maiz' ? 300 : 450;
-  const volatility = commodity === 'azucar' ? 0.15 : commodity === 'maiz' ? 0.12 : 0.18;
-  
-  for (let i = 0; i < months; i++) {
-    const date = new Date();
-    date.setMonth(date.getMonth() - months + i);
-    
-    const trend = Math.sin(i * 0.5) * 0.1;
-    const seasonal = Math.sin(i * 0.8) * 0.08;
-    const noise = (Math.random() - 0.5) * volatility;
-    
-    const price = basePrice * (1 + trend + seasonal + noise);
-    
-    data.push({
-      fecha: date.toISOString().split('T')[0],
-      mes: date.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
-      precio: Math.round(price),
-      prediccion: i > months - 6 ? Math.round(price * (1 + (Math.random() - 0.5) * 0.05)) : null,
-      intervalo_superior: i > months - 6 ? Math.round(price * 1.08) : null,
-      intervalo_inferior: i > months - 6 ? Math.round(price * 0.92) : null
-    });
-  }
-  return data;
-};
-
-const generatePredictionData = (months = 6) => {
-  const predictions = [];
-  const baseDate = new Date();
-  
-  for (let i = 1; i <= months; i++) {
-    const date = new Date();
-    date.setMonth(date.getMonth() + i);
-    
-    predictions.push({
-      mes: date.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
-      azucar: Math.round(850 + (Math.random() - 0.5) * 100),
-      maiz: Math.round(320 + (Math.random() - 0.5) * 40),
-      leche: Math.round(480 + (Math.random() - 0.5) * 60),
-      confianza: 85 + Math.random() * 10
-    });
-  }
-  return predictions;
-};
-
-const scenarioData = [
-  { escenario: 'Base', azucar: 850, maiz: 320, leche: 480, probabilidad: 40 },
-  { escenario: 'Sequía Severa', azucar: 920, maiz: 380, leche: 520, probabilidad: 15 },
-  { escenario: 'Devaluación 20%', azucar: 1020, maiz: 384, leche: 576, probabilidad: 20 },
-  { escenario: 'Condiciones Óptimas', azucar: 780, maiz: 290, leche: 420, probabilidad: 25 }
-];
-
-const riskFactors = [
-  { factor: 'Clima', impacto: 'Alto', probabilidad: 30, descripcion: 'Sequía en zona productiva' },
-  { factor: 'Tipo de Cambio', impacto: 'Medio', probabilidad: 45, descripcion: 'Volatilidad cambiaria' },
-  { factor: 'Políticas Comerciales', impacto: 'Medio', probabilidad: 25, descripcion: 'Restricciones a exportación' },
-  { factor: 'Precios Internacionales', impacto: 'Alto', probabilidad: 35, descripcion: 'Volatilidad mercados globales' }
-];
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { TrendingUp, TrendingDown, AlertTriangle, DollarSign, Calendar, BarChart3, Settings, Bell } from 'lucide-react';
 
 const ArcorPredictiveSystem = () => {
-  const [selectedCommodity, setSelectedCommodity] = useState('azucar');
-  const [selectedTab, setSelectedTab] = useState('predicciones');
-  const [historicalData, setHistoricalData] = useState({});
+  const [historicalData, setHistoricalData] = useState({ maiz: [] });
   const [predictions, setPredictions] = useState([]);
+  const [selectedTab, setSelectedTab] = useState('predicciones');
+  const [selectedCommodity, setSelectedCommodity] = useState('maiz');
+  const [modelEvaluations, setModelEvaluations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [alerts, setAlerts] = useState([]);
-
-  useEffect(() => {
-    // Simular carga de datos
-    setHistoricalData({
-      azucar: generateHistoricalData('azucar'),
-      maiz: generateHistoricalData('maiz'),
-      leche: generateHistoricalData('leche')
-    });
-    setPredictions(generatePredictionData());
-    
-    // Simular alertas
-    setAlerts([
-      { id: 1, tipo: 'warning', mensaje: 'Precio del azúcar muestra tendencia alcista (+5.2%)', timestamp: '2 horas' },
-      { id: 2, tipo: 'info', mensaje: 'Recomendación: Considerar compra de maíz en próximas 2 semanas', timestamp: '1 día' },
-      { id: 3, tipo: 'alert', mensaje: 'Alerta climática: Sequía prevista en zona productiva', timestamp: '3 horas' }
-    ]);
-  }, []);
 
   const commodityNames = {
     azucar: 'Azúcar',
@@ -93,28 +18,126 @@ const ArcorPredictiveSystem = () => {
     leche: 'Leche en Polvo'
   };
 
-  const currentData = historicalData[selectedCommodity] || [];
-  const latestPrice = currentData.length > 0 ? currentData[currentData.length - 1]?.precio : 0;
-  const previousPrice = currentData.length > 1 ? currentData[currentData.length - 2]?.precio : 0;
-  const priceChange = latestPrice - previousPrice;
-  const priceChangePercent = previousPrice > 0 ? ((priceChange / previousPrice) * 100) : 0;
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const MetricCard = ({ title, value, change, changePercent, icon: Icon, color }) => (
+        // Datos históricos y predicciones pasadas
+        const pastRes = await fetch("http://localhost:8000/api/predicciones/maiz");
+        const pastData = await pastRes.json();
+
+        // Predicciones futuras
+        const futureRes = await fetch("http://localhost:8000/api/prediccion?horizonte=6");
+        const futureData = await futureRes.json();
+
+        // Evaluación de modelos
+        const evalRes = await fetch("http://localhost:8000/api/evaluacion_modelos");
+        const evalData = await evalRes.json();
+        setModelEvaluations(evalData);
+
+        const lastDate = new Date(pastData[pastData.length - 1].fecha);
+
+        // Procesamiento de datos pasados
+        const past = pastData.map(d => {
+          const fecha = new Date(d.fecha);
+          return {
+            fecha: d.fecha,
+            mes: fecha.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
+            precio: d.precio,
+            prediccion_pasada: d.prediccion,
+            origen: "pasado"
+          };
+        });
+
+        // Procesamiento de predicciones futuras
+        const future = futureData.predicciones.map((p, i) => {
+          const fecha = new Date(lastDate);
+          fecha.setMonth(fecha.getMonth() + i + 1);
+
+          return {
+            fecha: fecha.toISOString().split("T")[0],
+            mes: fecha.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
+            precio: null,
+            prediccion_futura: p.precio_predicho,
+            intervalo_superior: p.precio_predicho * 1.08,
+            intervalo_inferior: p.precio_predicho * 0.92,
+            origen: "futuro"
+          };
+        });
+
+        const merged = [...past, ...future];
+        setHistoricalData({ maiz: merged });
+
+        // Generar predicciones para la tabla
+        const predictionTable = future.slice(0, 6).map(f => ({
+          mes: f.mes,
+          maiz: f.prediccion_futura,
+          confianza: 85 + Math.random() * 10
+        }));
+        setPredictions(predictionTable);
+
+        // Simular alertas basadas en datos reales
+        const latestPrice = past[past.length - 1]?.precio || 0;
+        const previousPrice = past[past.length - 2]?.precio || 0;
+        const priceChange = ((latestPrice - previousPrice) / previousPrice) * 100;
+        
+        const simulatedAlerts = [];
+        if (Math.abs(priceChange) > 3) {
+          simulatedAlerts.push({
+            id: 1,
+            tipo: priceChange > 0 ? 'warning' : 'alert',
+            mensaje: `Precio del maíz ${priceChange > 0 ? 'aumentó' : 'disminuyó'} ${Math.abs(priceChange).toFixed(1)}% en el último período`,
+            timestamp: '2 horas'
+          });
+        }
+        
+        simulatedAlerts.push({
+          id: 2,
+          tipo: 'info',
+          mensaje: 'Modelo actualizado con nuevos datos de mercado',
+          timestamp: '1 día'
+        });
+
+        setAlerts(simulatedAlerts);
+        
+      } catch (error) {
+        console.error("❌ Error cargando datos:", error);
+        setError("Error al cargar los datos del servidor");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const currentData = historicalData.maiz;
+  const latestPrice = currentData.findLast(d => d.precio != null)?.precio || 0;
+  const previousPrice = currentData.slice(-2).find(d => d.precio != null)?.precio || 0;
+  const priceChange = latestPrice - previousPrice;
+  const priceChangePercent = previousPrice > 0 ? (priceChange / previousPrice) * 100 : 0;
+
+  const MetricCard = ({ title, value, changePercent, icon: Icon, color, suffix = "" }) => (
     <div className="bg-white rounded-lg shadow-md p-6 border-l-4" style={{ borderLeftColor: color }}>
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-2xl font-bold text-gray-900">
-            ${value?.toLocaleString('es-AR') || '0'}
+            {suffix ? `${Math.round(value)}${suffix}` : `$${value?.toLocaleString('es-AR') || '0'}`}
           </p>
           <div className="flex items-center mt-1">
             {changePercent > 0 ? (
               <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-            ) : (
+            ) : changePercent < 0 ? (
               <TrendingDown className="w-4 h-4 text-red-500 mr-1" />
-            )}
-            <span className={`text-sm font-medium ${changePercent > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {changePercent > 0 ? '+' : ''}{changePercent?.toFixed(1)}%
+            ) : null}
+            <span className={`text-sm font-medium ${
+              changePercent > 0 ? 'text-green-600' : 
+              changePercent < 0 ? 'text-red-600' : 'text-gray-600'
+            }`}>
+              {changePercent !== 0 && (changePercent > 0 ? '+' : '')}{changePercent?.toFixed(1)}%
             </span>
           </div>
         </div>
@@ -153,6 +176,31 @@ const ArcorPredictiveSystem = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-600 rounded-lg flex items-center justify-center mb-4 mx-auto">
+            <span className="text-white font-bold text-xl">A</span>
+          </div>
+          <p className="text-gray-600">Cargando datos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-900 font-semibold mb-2">Error al cargar datos</p>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -165,7 +213,7 @@ const ArcorPredictiveSystem = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Sistema Predictivo Arcor</h1>
-                <p className="text-sm text-gray-600">Predicción de Precios de Materias Primas</p>
+                <p className="text-sm text-gray-600">Predicción de Precios de Maíz</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -185,7 +233,8 @@ const ArcorPredictiveSystem = () => {
             {[
               { id: 'predicciones', name: 'Predicciones', icon: TrendingUp },
               { id: 'escenarios', name: 'Escenarios', icon: BarChart3 },
-              { id: 'riesgo', name: 'Análisis de Riesgo', icon: AlertTriangle },
+              { id: 'evaluacion', name: 'Evaluación de Modelos', icon: AlertTriangle },
+              // { id: 'riesgo', name: 'Análisis de Riesgo', icon: AlertTriangle },
               { id: 'alertas', name: 'Alertas', icon: Bell }
             ].map(({ id, name, icon: Icon }) => (
               <button
@@ -206,59 +255,64 @@ const ArcorPredictiveSystem = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Commodity Selector */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Seleccionar Materia Prima</h2>
+          <div className="flex space-x-4">
+            {Object.entries(commodityNames).map(([key, name]) => (
+              <button
+                key={key}
+                onClick={() => key === 'maiz' && setSelectedCommodity(key)}
+                disabled={key !== 'maiz'}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedCommodity === key
+                    ? 'bg-red-600 text-white'
+                    : key === 'maiz'
+                      ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {name}
+                {key !== 'maiz' && (
+                  <span className="ml-2 text-xs">(Próximamente)</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {selectedTab === 'predicciones' && (
           <div className="space-y-6">
-            {/* Commodity Selector */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Seleccionar Materia Prima</h2>
-              <div className="flex space-x-4">
-                {Object.entries(commodityNames).map(([key, name]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedCommodity(key)}
-                    className={`px-4 py-2 rounded-lg font-medium ${
-                      selectedCommodity === key
-                        ? 'bg-red-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Current Price Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <MetricCard
-                title={`Precio Actual - ${commodityNames[selectedCommodity]}`}
+                title="Precio Actual - Maíz"
                 value={latestPrice}
-                change={priceChange}
                 changePercent={priceChangePercent}
                 icon={DollarSign}
                 color="#dc2626"
               />
               <MetricCard
-                title="Predicción 30 días"
-                value={predictions[0]?.[selectedCommodity]}
-                change={predictions[0]?.[selectedCommodity] - latestPrice}
-                changePercent={((predictions[0]?.[selectedCommodity] - latestPrice) / latestPrice) * 100}
+                title="Predicción Próximo Mes"
+                value={predictions[0]?.maiz}
+                changePercent={predictions[0]?.maiz ? ((predictions[0].maiz - latestPrice) / latestPrice) * 100 : 0}
                 icon={TrendingUp}
                 color="#059669"
               />
               <MetricCard
                 title="Confianza del Modelo"
-                value={Math.round(predictions[0]?.confianza || 85)}
+                value={predictions[0]?.confianza || 85}
                 changePercent={0}
                 icon={BarChart3}
                 color="#7c3aed"
+                suffix="%"
               />
             </div>
 
             {/* Historical and Prediction Chart */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Evolución y Predicción de Precios - {commodityNames[selectedCommodity]}
+                Evolución y Predicción de Precios - Maíz
               </h3>
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={currentData}>
@@ -266,10 +320,17 @@ const ArcorPredictiveSystem = () => {
                   <XAxis dataKey="mes" />
                   <YAxis />
                   <Tooltip 
-                    formatter={(value, name) => [
-                      `$${value?.toLocaleString('es-AR')}`, 
-                      name === 'precio' ? 'Precio Real' : 'Predicción'
-                    ]}
+                    formatter={(value, name) => {
+                      if (!value) return ['N/A', name];
+                      const formatName = {
+                        'precio': 'Precio Real',
+                        'prediccion_pasada': 'Predicción Pasada',
+                        'prediccion_futura': 'Predicción Futura',
+                        'intervalo_superior': 'Intervalo Superior',
+                        'intervalo_inferior': 'Intervalo Inferior'
+                      };
+                      return [`$${value?.toLocaleString('es-AR')}`, formatName[name] || name];
+                    }}
                   />
                   <Legend />
                   <Line 
@@ -277,17 +338,29 @@ const ArcorPredictiveSystem = () => {
                     dataKey="precio" 
                     stroke="#dc2626" 
                     strokeWidth={2}
-                    name="Precio Histórico"
+                    name="Precio Real"
                     connectNulls={false}
+                    dot={{ r: 3 }}
                   />
                   <Line 
                     type="monotone" 
-                    dataKey="prediccion" 
+                    dataKey="prediccion_pasada" 
                     stroke="#059669" 
                     strokeWidth={2}
                     strokeDasharray="5 5"
-                    name="Predicción"
+                    name="Predicción Pasada"
                     connectNulls={false}
+                    dot={false}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="prediccion_futura" 
+                    stroke="#0ea5e9" 
+                    strokeWidth={2}
+                    strokeDasharray="3 3"
+                    name="Predicción Futura"
+                    connectNulls={false}
+                    dot={{ r: 4 }}
                   />
                   <Line 
                     type="monotone" 
@@ -297,6 +370,7 @@ const ArcorPredictiveSystem = () => {
                     strokeDasharray="2 2"
                     name="Intervalo Superior"
                     connectNulls={false}
+                    dot={false}
                   />
                   <Line 
                     type="monotone" 
@@ -306,6 +380,7 @@ const ArcorPredictiveSystem = () => {
                     strokeDasharray="2 2"
                     name="Intervalo Inferior"
                     connectNulls={false}
+                    dot={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -322,47 +397,49 @@ const ArcorPredictiveSystem = () => {
                         Mes
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Azúcar ($/kg)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Maíz ($/kg)
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Leche en Polvo ($/kg)
+                        Precio Predicho ($/kg)
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Confianza
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Cambio vs Actual
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {predictions.map((pred, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {pred.mes}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${pred.azucar.toLocaleString('es-AR')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${pred.maiz.toLocaleString('es-AR')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${pred.leche.toLocaleString('es-AR')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-green-600 h-2 rounded-full" 
-                                style={{ width: `${pred.confianza}%` }}
-                              ></div>
+                    {predictions.map((pred, index) => {
+                      const changeVsActual = ((pred.maiz - latestPrice) / latestPrice) * 100;
+                      return (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {pred.mes}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${pred.maiz?.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{ width: `${pred.confianza}%` }}
+                                ></div>
+                              </div>
+                              <span>{Math.round(pred.confianza)}%</span>
                             </div>
-                            <span>{Math.round(pred.confianza)}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`font-medium ${
+                              changeVsActual > 0 ? 'text-green-600' : 
+                              changeVsActual < 0 ? 'text-red-600' : 'text-gray-600'
+                            }`}>
+                              {changeVsActual > 0 ? '+' : ''}{changeVsActual.toFixed(1)}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -371,129 +448,96 @@ const ArcorPredictiveSystem = () => {
         )}
 
         {selectedTab === 'escenarios' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Análisis de Escenarios</h2>
-              <p className="text-gray-600 mb-6">
-                Simulación de precios bajo diferentes condiciones macroeconómicas y climáticas
-              </p>
-              
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={scenarioData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="escenario" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      `$${value?.toLocaleString('es-AR')}`, 
-                      name === 'azucar' ? 'Azúcar' : name === 'maiz' ? 'Maíz' : 'Leche en Polvo'
-                    ]}
-                  />
-                  <Legend />
-                  <Bar dataKey="azucar" fill="#dc2626" name="Azúcar" />
-                  <Bar dataKey="maiz" fill="#059669" name="Maíz" />
-                  <Bar dataKey="leche" fill="#7c3aed" name="Leche en Polvo" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {scenarioData.map((scenario, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-md p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{scenario.escenario}</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Probabilidad:</span>
-                      <span className="font-medium">{scenario.probabilidad}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Impacto Azúcar:</span>
-                      <span className="font-medium">${scenario.azucar.toLocaleString('es-AR')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Impacto Maíz:</span>
-                      <span className="font-medium">${scenario.maiz.toLocaleString('es-AR')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Impacto Leche:</span>
-                      <span className="font-medium">${scenario.leche.toLocaleString('es-AR')}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Análisis de Escenarios</h2>
+            <p className="text-gray-600 mb-6">
+              Módulo de escenarios en desarrollo. Aquí podrás simular diferentes condiciones de mercado.
+            </p>
+            <div className="text-center py-12">
+              <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Próximamente disponible</p>
             </div>
           </div>
         )}
 
         {selectedTab === 'riesgo' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Matriz de Factores de Riesgo</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Factor de Riesgo
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Impacto
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Probabilidad
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Descripción
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {riskFactors.map((risk, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {risk.factor}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${ 
-                            risk.impacto === 'Alto' ? 'bg-red-100 text-red-800' : 
-                            risk.impacto === 'Medio' ? 'bg-yellow-100 text-yellow-800' : 
-                            'bg-green-100 text-green-800'
-                          }`}>
-                            {risk.impacto}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {risk.probabilidad}%
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {risk.descripcion}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Análisis de Riesgo</h2>
+            <p className="text-gray-600 mb-6">
+              Evaluación de riesgos asociados a las fluctuaciones de precios de materias primas.
+            </p>
+            <div className="text-center py-12">
+              <AlertTriangle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Módulo en desarrollo</p>
             </div>
+          </div>
+        )}
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Value at Risk (VaR)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-red-600">7.5%</p>
-                  <p className="text-sm text-gray-600">VaR 95% - 1 mes</p>
-                  <p className="text-xs text-gray-500">Pérdida máxima esperada</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">12.3%</p>
-                  <p className="text-sm text-gray-600">VaR 95% - 3 meses</p>
-                  <p className="text-xs text-gray-500">Pérdida máxima esperada</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-yellow-600">18.7%</p>
-                  <p className="text-sm text-gray-600">VaR 95% - 6 meses</p>
-                  <p className="text-xs text-gray-500">Pérdida máxima esperada</p>
-                </div>
-              </div>
+        {selectedTab === 'evaluacion' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Evaluación de Modelos</h2>
+            <p className="text-gray-600 mb-6">
+              Métricas de rendimiento de los modelos predictivos utilizados
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Modelo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      MAE (Error Absoluto Medio)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      MAPE (Error Porcentual Medio)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      R² Score
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      RMSE (Raíz del Error Cuadrático Medio)
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Estado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {modelEvaluations.map((model, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {model.nombre}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {model.MAE?.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {model.MAPE?.toFixed(2)}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`font-medium ${
+                          model.R2 > 0.8 ? 'text-green-600' : 
+                          model.R2 > 0.6 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {model.R2?.toFixed(3)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {model.RMSE?.toFixed(2)}%
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          model.R2 > 0.8 ? 'bg-green-100 text-green-800' : 
+                          model.R2 > 0.6 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {model.R2 > 0.8 ? 'Excelente' : model.R2 > 0.6 ? 'Bueno' : 'Regular'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -503,9 +547,16 @@ const ArcorPredictiveSystem = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Alertas Activas</h2>
               <div className="space-y-4">
-                {alerts.map((alert) => (
-                  <AlertCard key={alert.id} alert={alert} />
-                ))}
+                {alerts.length > 0 ? (
+                  alerts.map((alert) => (
+                    <AlertCard key={alert.id} alert={alert} />
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No hay alertas activas</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -536,6 +587,8 @@ const ArcorPredictiveSystem = () => {
             </div>
           </div>
         )}
+
+        
       </div>
     </div>
   );

@@ -17,7 +17,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
     "http://localhost:5173",         # para desarrollo local fuera de Docker
-    "http://frontend:5173"          # para llamadas dentro de la red de Docker
+    "http://frontend:5173",
+    "*"      # para llamadas dentro de la red de Docker
     ],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,13 +36,6 @@ dataset_paths = {
 eda = EDAMaizArcorMejorado(dataset_paths)
 insights, df_maiz = eda.ejecutar_eda_completo_mejorado()
 ml_extension, mejor_modelo = extender_eda_con_ml(eda)
-
-# @app.get("/api/predicciones/maiz")
-# def get_predicciones_maiz():
-#     df = ml_extension.df_ml.copy()
-#     df = df.tail(12).reset_index()
-#     df['fecha'] = df['fecha'].astype(str)
-#     return df.to_dict(orient="records")
 
 @app.get("/api/predicciones/maiz")
 def get_predicciones_maiz():
@@ -138,20 +132,14 @@ def get_historico_maiz():
 def evaluacion_modelos():
     resultados = []
     for nombre, data in ml_extension.models.items():
-        modelo = data["modelo"]
-        X = ml_extension.df_ml[ml_extension.features].copy().fillna(0)
-        y_true = ml_extension.df_ml[ml_extension.target]
-        y_pred = modelo.predict(X)
-
-        mae = mean_absolute_error(y_true, y_pred)
-        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
-        r2 = r2_score(y_true, y_pred)
-
+        met = data.get("metricas_test", {})
         resultados.append({
             "nombre": nombre,
-            "mae": mae,
-            "mape": mape,
-            "r2": r2
+            "MAE": met.get("MAE"),
+            "MAPE": met.get("MAPE"),
+            "R2": met.get("R2"),
+            "RMSE": met.get("RMSE"),
+            "Precision_Direccion": met.get("Precision_Direccion")
         })
     return resultados
 

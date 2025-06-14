@@ -352,26 +352,50 @@ class MLExtensionMaizArcor:
             print(f"  • Precisión Direccional: {test_metrics['Precision_Direccion']:.1f}%")
     
     def generar_recomendaciones_ml(self):
-        """Genera recomendaciones específicas para ML"""
-        print(f"\n🎯 RECOMENDACIONES PARA PRODUCCIÓN")
-        print("="*60)
-        
-        # Mejor modelo
-        mejor_modelo = min(self.models.items(), 
-                          key=lambda x: x[1]['metricas_test']['MAPE'])
-        
-        print(f"🏆 MEJOR MODELO: {mejor_modelo[0]}")
-        print(f"📊 MAPE en Test: {mejor_modelo[1]['metricas_test']['MAPE']:.2f}%")
-        
-        print(f"\n📋 PRÓXIMOS PASOS:")
-        print("1. 🔧 Optimizar hiperparámetros del mejor modelo")
-        print("2. 📊 Implementar validación cruzada temporal")
-        print("3. 🤖 Probar modelos avanzados (XGBoost, LSTM)")
-        print("4. 📈 Implementar ensemble de modelos")
-        print("5. 🚨 Configurar sistema de alertas")
-        print("6. 📱 Crear API para predicciones en tiempo real")
-        
-        return mejor_modelo[0]
+        """Genera recomendaciones específicas para ML evaluando múltiples métricas"""
+        print("\n🎯 RECOMENDACIONES PARA PRODUCCIÓN")
+        print("=" * 60)
+
+        resultados = []
+
+        # Recolectar métricas de cada modelo
+        for nombre, info in self.models.items():
+            met = info["metricas_test"]
+            resultados.append({
+                "nombre": nombre,
+                "MAPE": met["MAPE"],
+                "MAE": met["MAE"],
+                "RMSE": met["RMSE"],
+                "R2": met["R2"]
+            })
+
+        # Crear DataFrame para rankings
+        import pandas as pd
+        df = pd.DataFrame(resultados)
+
+        # Asignar rankings (menor es mejor para errores, mayor para R2)
+        df["rank_mape"] = df["MAPE"].rank(ascending=True)
+        df["rank_mae"] = df["MAE"].rank(ascending=True)
+        df["rank_rmse"] = df["RMSE"].rank(ascending=True)
+        df["rank_r2"] = df["R2"].rank(ascending=False)
+
+        # Puntaje final ponderado
+        df["puntaje_total"] = (
+            df["rank_mape"] * 0.4 +
+            df["rank_mae"] * 0.2 +
+            df["rank_rmse"] * 0.2 +
+            df["rank_r2"] * 0.2
+        )
+
+        # Selección del mejor modelo
+        mejor = df.sort_values("puntaje_total").iloc[0]
+
+        # Mostrar resumen
+        print(df[["nombre", "MAPE", "MAE", "RMSE", "R2", "puntaje_total"]])
+        print(f"\n🏆 MEJOR MODELO GLOBAL: {mejor['nombre']} (Puntaje: {mejor['puntaje_total']:.2f})")
+
+        return mejor["nombre"]
+
 
 # Ejemplo de uso
 def ejecutar_pipeline_ml_completo(eda_instance):
