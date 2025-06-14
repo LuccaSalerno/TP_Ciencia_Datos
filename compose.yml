@@ -1,0 +1,47 @@
+services:
+  frontend:
+    hostname: frontend
+    image: node:24
+    working_dir: /app
+    expose:
+      - 5173
+    ports:
+      - 5173:5173
+    volumes:
+      - ./frontend:/app
+      - arcor_node_modules:/app/node_modules
+    networks:
+      - internal
+    # environment:
+    #   - PUBLIC_BACKEND_URL=http://localhost:5173
+    #   - DATABASE_POSTGRES_URL=postgres://certman:password@postgres-db:5432/certman
+    #   - POSTGRES_URL=postgres://certman:password@db:5432/certman
+    #   - DATABASE_URL=postgres://certman:password@db:5432/certman
+    command: bash -c 'npm install && npm run dev --host'
+  backend:
+    image: python:3.13.3
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    # command: >
+    #   sh -c "pip install -r requirements.txt &&
+    #   python manage.py migrate &&
+    #   python manage.py runserver 0.0.0.0:8001"
+    ports:
+      - 8001:8001
+    # environment:
+    #   - DATABASE_POSTGRES_URL=postgres://certman:password@postgres-db:5432/certman
+    #   - DB_NAME=certman
+    #   - DB_USER=certman
+    #   - DB_PASSWORD=password
+    #   - DB_HOST=postgres-db
+    #   - DB_PORT=5432
+    #   - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+    #   - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+    networks:
+      - internal
+volumes:
+  arcor_node_modules:
+  
+networks:
+  internal:
