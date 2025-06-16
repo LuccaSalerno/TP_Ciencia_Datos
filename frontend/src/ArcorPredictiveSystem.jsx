@@ -11,6 +11,11 @@ const ArcorPredictiveSystem = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [escenarios, setEscenarios] = useState([]);
+  const [volatilidad, setVolatilidad] = useState(null);
+  const [precioBase, setPrecioBase] = useState(null);
+  const [diagnostico, setDiagnostico] = useState(null);
+
 
   const commodityNames = {
     azucar: 'Azúcar',
@@ -36,6 +41,20 @@ const ArcorPredictiveSystem = () => {
         const evalRes = await fetch("http://localhost:8000/api/evaluacion_modelos");
         const evalData = await evalRes.json();
         setModelEvaluations(evalData);
+
+        // Escenarios simulados
+        const escenariosRes = await fetch("http://localhost:8000/api/escenarios");
+        const escenariosData = await escenariosRes.json();
+        setEscenarios(escenariosData.escenarios);
+        setVolatilidad(escenariosData.volatilidad_historica);
+        setPrecioBase(escenariosData.precio_base);
+
+        // Diagnóstico del modelo
+        const diagRes = await fetch("http://localhost:8000/api/diagnosticos");
+        const diagData = await diagRes.json();
+        setDiagnostico(diagData);
+
+
 
         const lastDate = new Date(pastData[pastData.length - 1].fecha);
 
@@ -234,6 +253,8 @@ const ArcorPredictiveSystem = () => {
               { id: 'predicciones', name: 'Predicciones', icon: TrendingUp },
               { id: 'escenarios', name: 'Escenarios', icon: BarChart3 },
               { id: 'evaluacion', name: 'Evaluación de Modelos', icon: AlertTriangle },
+              { id: 'diagnostico', name: 'Diagnóstico', icon: Settings },
+
               // { id: 'riesgo', name: 'Análisis de Riesgo', icon: AlertTriangle },
               { id: 'alertas', name: 'Alertas', icon: Bell }
             ].map(({ id, name, icon: Icon }) => (
@@ -448,17 +469,31 @@ const ArcorPredictiveSystem = () => {
         )}
 
         {selectedTab === 'escenarios' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Análisis de Escenarios</h2>
-            <p className="text-gray-600 mb-6">
-              Módulo de escenarios en desarrollo. Aquí podrás simular diferentes condiciones de mercado.
-            </p>
-            <div className="text-center py-12">
-              <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Próximamente disponible</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {escenarios.map((e, index) => (
+                <div key={index} className="border rounded-lg p-4 shadow-sm bg-gray-50">
+                  <h3 className="text-md font-semibold text-gray-800 mb-2">{e.escenario}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{e.descripcion}</p>
+                  <div className="space-y-1 text-sm text-gray-700">
+                    <p>📈 Precio Estimado: <strong>${e.maiz.toLocaleString('es-AR')}</strong></p>
+                    <p>🔽 Límite Inferior: ${e.limite_inferior.toLocaleString('es-AR')}</p>
+                    <p>🔼 Límite Superior: ${e.limite_superior.toLocaleString('es-AR')}</p>
+                    <p>📊 Probabilidad: {e.probabilidad}%</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 text-sm text-gray-600">
+              <p>📌 Precio base actual: <strong>${precioBase?.toLocaleString('es-AR')}</strong></p>
+              <p>📉 Volatilidad histórica del precio: <strong>{volatilidad}%</strong></p>
             </div>
           </div>
         )}
+
 
         {selectedTab === 'riesgo' && (
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -538,6 +573,43 @@ const ArcorPredictiveSystem = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {selectedTab === 'diagnostico' && diagnostico && (
+          <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Diagnóstico del Modelo</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Datos */}
+              <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                <h3 className="text-md font-semibold text-gray-700 mb-2">Datos</h3>
+                <p><strong>Observaciones:</strong> {diagnostico.datos.total_observaciones}</p>
+                <p><strong>Fechas:</strong> {diagnostico.datos.rango_fechas.inicio} → {diagnostico.datos.rango_fechas.fin}</p>
+                <p><strong>Valores faltantes:</strong> {diagnostico.datos.valores_faltantes}</p>
+                <p><strong>Precio promedio:</strong> ${diagnostico.datos.precio_promedio}</p>
+                <p><strong>Volatilidad:</strong> {diagnostico.datos.precio_volatilidad}</p>
+              </div>
+
+              {/* Modelo */}
+              <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                <h3 className="text-md font-semibold text-gray-700 mb-2">Modelo</h3>
+                <p><strong>Nombre:</strong> {diagnostico.modelo.nombre}</p>
+                <p><strong>Precisión (MAPE):</strong> {diagnostico.modelo.precision}%</p>
+                <p><strong>R²:</strong> {diagnostico.modelo.r_cuadrado}</p>
+                <p><strong>Error Promedio (MAE):</strong> {diagnostico.modelo.error_promedio}</p>
+                <p><strong>Features usadas:</strong> {diagnostico.modelo.features_utilizadas}</p>
+                <p><strong>Escalado:</strong> {diagnostico.modelo.usa_escalado ? "Sí" : "No"}</p>
+              </div>
+
+              {/* Rendimiento */}
+              <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
+                <h3 className="text-md font-semibold text-gray-700 mb-2">Rendimiento</h3>
+                <p><strong>Predicciones test:</strong> {diagnostico.rendimiento.predicciones_test}</p>
+                <p><strong>Error std:</strong> {diagnostico.rendimiento.error_std}</p>
+                <p><strong>Sesgo promedio:</strong> {diagnostico.rendimiento.sesgo_promedio}</p>
+              </div>
             </div>
           </div>
         )}

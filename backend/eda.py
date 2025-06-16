@@ -153,6 +153,47 @@ class EDAMaizArcorMejorado:
             df = self.datasets['maiz_datos'].copy()
             self.datasets_procesados['maiz_datos'] = df
             print("✅ Maíz datos procesado")
+
+    def analisis_datasets(self):
+        print("\n" + "="*60)
+        print("📊 ANÁLISIS DESCRIPTIVO DE TODOS LOS DATASETS")
+        print("="*60)
+        
+        if not self.datasets_procesados:
+            print("❌ No hay datasets procesados para analizar")
+            return
+        
+        for nombre, df in self.datasets_procesados.items():
+            print(f"\n🔹 Dataset: {nombre}")
+            print("-" * 40)
+            
+            # Información general
+            print(f"• Período de datos: {df.index.min()} a {df.index.max()}" if hasattr(df.index, 'min') else "• Índice no es fecha")
+            print(f"• Total de registros: {len(df):,}")
+            print(f"• Columnas: {list(df.columns)}")
+            
+            # Estadísticas numéricas
+            num_cols = df.select_dtypes(include=['number']).columns
+            if len(num_cols) > 0:
+                print("\n  → Estadísticas numéricas:")
+                desc_num = df[num_cols].describe().T
+                for col in desc_num.index:
+                    stats = desc_num.loc[col]
+                    print(f"    • {col}: mean={stats['mean']:.2f}, min={stats['min']:.2f}, max={stats['max']:.2f}, std={stats['std']:.2f}")
+            else:
+                print("  → No hay columnas numéricas")
+            
+            # Estadísticas categóricas
+            cat_cols = df.select_dtypes(include=['object', 'category']).columns
+            if len(cat_cols) > 0:
+                print("\n  → Estadísticas categóricas (top 3 valores más frecuentes):")
+                for col in cat_cols:
+                    top_vals = df[col].value_counts().head(3)
+                    print(f"    • {col}:")
+                    for val, cnt in top_vals.items():
+                        print(f"      - {val}: {cnt} registros")
+            else:
+                print("  → No hay columnas categóricas")
     
     def analisis_maiz_detallado(self):
         """Análisis específico y detallado del maíz"""
@@ -439,51 +480,18 @@ class EDAMaizArcorMejorado:
                 print(f"• Correlación Maíz-IPC: {corr_ipc:.3f}")
                 insights['correlacion_ipc'] = corr_ipc
         
-        # Recomendaciones específicas para Arcor
-        print(f"\n🚀 RECOMENDACIONES ESPECÍFICAS PARA ARCOR:")
-        print("-" * 50)
-        print("1. 📊 VARIABLES CLAVE PARA EL MODELO:")
-        print("   - Precios históricos del maíz (variable target)")
-        print("   - Tipo de cambio USD/ARS (alta influencia)")
-        print("   - Índice de inflación (IPC)")
-        print("   - Componente estacional (mes del año)")
-        print("   - Volatilidad histórica")
-        
-        print(f"\n2. ⏰ HORIZONTES DE PREDICCIÓN RECOMENDADOS:")
-        print("   - Corto plazo: 1-3 meses (mayor precisión)")
-        print("   - Mediano plazo: 3-6 meses (para planificación)")
-        print("   - Largo plazo: 6-12 meses (tendencias)")
-        
-        print(f"\n3. 🛠️ MODELOS SUGERIDOS:")
-        print("   - ARIMA/SARIMA (captura estacionalidad)")
-        print("   - Random Forest (relaciones no lineales)")
-        print("   - LSTM (patrones temporales complejos)")
-        print("   - Ensemble (combinar múltiples modelos)")
-        
-        print(f"\n4. 📈 MÉTRICAS DE EVALUACIÓN:")
-        print("   - MAPE (error porcentual medio)")
-        print("   - RMSE (error cuadrático medio)")
-        print("   - MAE (error absoluto medio)")
-        print("   - Backtesting con validación temporal")
-        
-        print(f"\n5. 🎯 CONSIDERACIONES ESPECIALES ARCOR:")
-        print("   - Impacto de eventos macroeconómicos")
-        print("   - Estacionalidad de la demanda de productos")
-        print("   - Gestión de inventarios y compras anticipadas")
-        print("   - Alertas automáticas por cambios abruptos")
-        
         return insights
     
     def ejecutar_eda_completo_mejorado(self):
         """Ejecuta el análisis exploratorio completo mejorado"""
-        print("🌽 ANÁLISIS EXPLORATORIO MEJORADO - PREDICCIÓN PRECIOS MAÍZ ARCOR")
+        print("🌽 ANÁLISIS EXPLORATORIO - PREDICCIÓN PRECIOS MAÍZ ARCOR")
         print("=" * 80)
         
         # Cargar y procesar datos
         self.cargar_datos()
         self.procesar_datasets()
         
-        # Análisis específico del maíz
+        self.analisis_datasets()
         df_maiz = self.analisis_maiz_detallado()
         
         # Crear visualizaciones mejoradas
@@ -497,16 +505,3 @@ class EDAMaizArcorMejorado:
         print(f"🔧 {len(self.datasets_procesados)} datasets procesados")
         
         return insights, df_maiz
-
-# # Ejecución del análisis mejorado
-# if __name__ == "__main__":
-#     # Definir rutas de dataset
-    
-#     # Crear instancia del análisis mejorado
-#     eda_mejorado = EDAMaizArcorMejorado(dataset_paths)
-    
-#     # Ejecutar análisis completo
-#     insights, df_maiz = eda_mejorado.ejecutar_eda_completo_mejorado()
-    
-#     print("\n🎉 ¡Análisis mejorado completado! Listo para desarrollar el modelo predictivo.")
-#     print("📊 Datos procesados y listos para machine learning.")

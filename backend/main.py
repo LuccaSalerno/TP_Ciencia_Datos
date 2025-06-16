@@ -1,5 +1,5 @@
 # Después de ejecutar tu EDA original
-from MLExtension import extender_eda_con_ml
+from MLExtension import EnhancedRobustCornPipeline
 from eda import EDAMaizArcorMejorado
 from visualizaciones_arcor import graficar_resultados
 
@@ -11,15 +11,18 @@ dataset_paths = {
         'agrofy_precios': 'datos/series-historicas-pizarra.csv'
     }
 
-
 eda_mejorado = EDAMaizArcorMejorado(dataset_paths)
 insights, df_maiz = eda_mejorado.ejecutar_eda_completo_mejorado()
 
 # Agregar capacidades ML
-ml_extension, mejor_modelo = extender_eda_con_ml(eda_mejorado)
-ml_extension.validacion_cruzada_temporal_xgboost(n_splits=5)
-graficar_resultados(ml_extension)
+EnhancedRobustCornPipeline = EnhancedRobustCornPipeline(eda_mejorado)
+EnhancedRobustCornPipeline.run_complete_analysis()
+
+# print(EnhancedRobustCornPipeline.models)
+
+# ml_extension.validacion_cruzada_temporal_xgboost(n_splits=5)
+# graficar_resultados(ml_extension)
 
 
-print(f"🎉 ¡Pipeline completo listo!")
-print(f"🏆 Mejor modelo: {mejor_modelo}")
+# print(f"🎉 ¡Pipeline completo listo!")
+# print(f"🏆 Mejor modelo: {mejor_modelo}")
