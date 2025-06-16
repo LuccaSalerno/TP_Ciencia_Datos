@@ -77,11 +77,12 @@ const ArcorPredictiveSystem = () => {
 
           return {
             fecha: fecha.toISOString().split("T")[0],
-            mes: fecha.toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
+            mes: p.mes,
             precio: null,
             prediccion_futura: p.precio_predicho,
-            intervalo_superior: p.precio_predicho * 1.08,
-            intervalo_inferior: p.precio_predicho * 0.92,
+            intervalo_superior: p.limite_superior,
+            intervalo_inferior: p.limite_inferior,
+            confianza: p.confianza,
             origen: "futuro"
           };
         });
@@ -93,7 +94,7 @@ const ArcorPredictiveSystem = () => {
         const predictionTable = future.slice(0, 6).map(f => ({
           mes: f.mes,
           maiz: f.prediccion_futura,
-          confianza: 85 + Math.random() * 10
+          confianza: f.confianza
         }));
         setPredictions(predictionTable);
 
@@ -534,12 +535,24 @@ const ArcorPredictiveSystem = () => {
                       RMSE (Raíz del Error Cuadrático Medio)
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      STD
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Escalado
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Estado
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {modelEvaluations.map((model, index) => (
+                  {modelEvaluations.modelos
+                  .sort((a, b) => {
+                    if (a.es_mejor) return -1;
+                    if (b.es_mejor) return 1;
+                    return a.MAPE - b.MAPE;
+                  })
+                  .map((model, index) => (
                     <tr key={index}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {model.nombre}
@@ -562,11 +575,26 @@ const ArcorPredictiveSystem = () => {
                         {model.RMSE?.toFixed(2)}%
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {model.pred_std?.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {model.usa_escalado ? "Sí" : "No"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          model.R2 > 0.8 ? 'bg-green-100 text-green-800' : 
-                          model.R2 > 0.6 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                          model.es_mejor
+                            ? 'bg-green-100 text-green-800'
+                            : model.R2 > 0.6
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
                         }`}>
-                          {model.R2 > 0.8 ? 'Excelente' : model.R2 > 0.6 ? 'Bueno' : 'Regular'}
+                          {model.es_mejor
+                            ? '⭐ Mejor Modelo'
+                            : model.R2 > 0.8
+                              ? 'Excelente'
+                              : model.R2 > 0.6
+                                ? 'Bueno'
+                                : 'Regular'}
                         </span>
                       </td>
                     </tr>
