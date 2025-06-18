@@ -29,27 +29,27 @@ const ArcorPredictiveSystem = () => {
         setLoading(true);
         setError(null);
 
-        // Datos históricos y predicciones pasadas
+
         const pastRes = await fetch("http://localhost:8000/api/predicciones/maiz");
         const pastData = await pastRes.json();
 
-        // Predicciones futuras
+
         const futureRes = await fetch("http://localhost:8000/api/prediccion?horizonte=6");
         const futureData = await futureRes.json();
 
-        // Evaluación de modelos
+
         const evalRes = await fetch("http://localhost:8000/api/evaluacion_modelos");
         const evalData = await evalRes.json();
         setModelEvaluations(evalData);
 
-        // Escenarios simulados
+
         const escenariosRes = await fetch("http://localhost:8000/api/escenarios");
         const escenariosData = await escenariosRes.json();
         setEscenarios(escenariosData.escenarios);
         setVolatilidad(escenariosData.volatilidad_historica);
         setPrecioBase(escenariosData.precio_base);
 
-        // Diagnóstico del modelo
+
         const diagRes = await fetch("http://localhost:8000/api/diagnosticos");
         const diagData = await diagRes.json();
         setDiagnostico(diagData);
@@ -58,7 +58,7 @@ const ArcorPredictiveSystem = () => {
 
         const lastDate = new Date(pastData[pastData.length - 1].fecha);
 
-        // Procesamiento de datos pasados
+
         const past = pastData.map(d => {
           const fecha = new Date(d.fecha);
           return {
@@ -70,7 +70,7 @@ const ArcorPredictiveSystem = () => {
           };
         });
 
-        // Procesamiento de predicciones futuras
+
         const future = futureData.predicciones.map((p, i) => {
           const fecha = new Date(lastDate);
           fecha.setMonth(fecha.getMonth() + i + 1);
@@ -90,7 +90,7 @@ const ArcorPredictiveSystem = () => {
         const merged = [...past, ...future];
         setHistoricalData({ maiz: merged });
 
-        // Generar predicciones para la tabla
+
         const predictionTable = future.slice(0, 6).map(f => ({
           mes: f.mes,
           maiz: f.prediccion_futura,
@@ -98,7 +98,7 @@ const ArcorPredictiveSystem = () => {
         }));
         setPredictions(predictionTable);
 
-        // Simular alertas basadas en datos reales
+
         const latestPrice = past[past.length - 1]?.precio || 0;
         const previousPrice = past[past.length - 2]?.precio || 0;
         const priceChange = ((latestPrice - previousPrice) / previousPrice) * 100;
@@ -223,7 +223,7 @@ const ArcorPredictiveSystem = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
+
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -246,7 +246,7 @@ const ArcorPredictiveSystem = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8">
@@ -277,7 +277,7 @@ const ArcorPredictiveSystem = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Commodity Selector */}
+
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Seleccionar Materia Prima</h2>
           <div className="flex space-x-4">
@@ -305,7 +305,7 @@ const ArcorPredictiveSystem = () => {
 
         {selectedTab === 'predicciones' && (
           <div className="space-y-6">
-            {/* Current Price Metrics */}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <MetricCard
                 title="Precio Actual - Maíz"
@@ -331,7 +331,7 @@ const ArcorPredictiveSystem = () => {
               />
             </div>
 
-            {/* Historical and Prediction Chart */}
+
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Evolución y Predicción de Precios - Maíz
@@ -408,7 +408,7 @@ const ArcorPredictiveSystem = () => {
               </ResponsiveContainer>
             </div>
 
-            {/* Predictions Table */}
+
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Predicciones Detalladas</h3>
               <div className="overflow-x-auto">
@@ -610,7 +610,7 @@ const ArcorPredictiveSystem = () => {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Diagnóstico del Modelo</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Datos */}
+
               <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
                 <h3 className="text-md font-semibold text-gray-700 mb-2">Datos</h3>
                 <p><strong>Observaciones:</strong> {diagnostico.datos.total_observaciones}</p>
@@ -620,7 +620,7 @@ const ArcorPredictiveSystem = () => {
                 <p><strong>Volatilidad:</strong> {diagnostico.datos.precio_volatilidad}</p>
               </div>
 
-              {/* Modelo */}
+
               <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
                 <h3 className="text-md font-semibold text-gray-700 mb-2">Modelo</h3>
                 <p><strong>Nombre:</strong> {diagnostico.modelo.nombre}</p>
@@ -631,7 +631,7 @@ const ArcorPredictiveSystem = () => {
                 <p><strong>Escalado:</strong> {diagnostico.modelo.usa_escalado ? "Sí" : "No"}</p>
               </div>
 
-              {/* Rendimiento */}
+                                                
               <div className="bg-gray-50 rounded-lg p-4 shadow-sm">
                 <h3 className="text-md font-semibold text-gray-700 mb-2">Rendimiento</h3>
                 <p><strong>Predicciones test:</strong> {diagnostico.rendimiento.predicciones_test}</p>

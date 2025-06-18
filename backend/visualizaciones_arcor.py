@@ -15,7 +15,7 @@ def graficar_resultados(ml_pipeline):
     y_test = list(modelos.values())[0]['y_test']
     fechas_test = ml_pipeline.df_ml.index[-len(y_test):]
 
-    # Gráfico 1: Real vs Predicho
+
     plt.figure(figsize=(12, 6))
     plt.plot(fechas_test, y_test, label='Real', marker='o')
     for nombre, datos in modelos.items():
@@ -28,7 +28,7 @@ def graficar_resultados(ml_pipeline):
     plt.tight_layout()
     plt.show()
 
-    # Gráfico 2: Errores absolutos
+
     x = np.arange(len(fechas_test))
     bar_width = 0.8 / len(modelos)
     plt.figure(figsize=(12, 6))
@@ -43,7 +43,7 @@ def graficar_resultados(ml_pipeline):
     plt.tight_layout()
     plt.show()
 
-    # Gráfico 3: MAPE Global por Modelo
+    
     nombres = []
     mapes = []
     for nombre, datos in modelos.items():
@@ -58,7 +58,7 @@ def graficar_resultados(ml_pipeline):
     plt.tight_layout()
     plt.show()
 
-    # Gráfico 4: Importancia de variables
+
     features = ml_pipeline.features
     plt.figure(figsize=(14, 6))
     plotted = False

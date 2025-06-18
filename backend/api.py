@@ -8,18 +8,18 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from fastapi.responses import JSONResponse
 from sklearn.metrics import mean_absolute_error, r2_score
-from MLExtension import EnhancedRobustCornPipeline  # Importamos la nueva clase
+from MLExtension import EnhancedRobustCornPipeline
 from eda import EDAMaizArcorMejorado
 
 app = FastAPI()
 
-# CORS para permitir conexión desde el frontend React (puerto 5173 por ejemplo)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",         # para desarrollo local fuera de Docker
+        "http://localhost:5173",         
         "http://frontend:5173",
-        "*"      # para llamadas dentro de la red de Docker
+        "*"      
     ],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,31 +33,29 @@ dataset_paths = {
     'agrofy_precios': 'datos/series-historicas-pizarra.csv'
 }
 
-# Inicializar EDA
+    
 eda = EDAMaizArcorMejorado(dataset_paths)
 insights, df_maiz = eda.ejecutar_eda_completo_mejorado()
 
-# Inicializar Enhanced ML Pipeline
 ml_pipeline = EnhancedRobustCornPipeline(eda)
 
-# Ejecutar análisis completo
 print("🚀 Ejecutando análisis ML mejorado...")
 ml_results = ml_pipeline.run_complete_analysis()
 
-# Identificar el mejor modelo
+
 def get_best_model_name():
     """Obtiene el nombre del mejor modelo basado en métricas"""
     if not ml_pipeline.models:
         return None
     
-    # Filtrar modelos con R² positivo
+
     good_models = {k: v for k, v in ml_pipeline.models.items() if v['test_r2'] > 0}
     
     if good_models:
-        # Mejor modelo por MAPE entre los que tienen R² > 0
+
         return min(good_models.keys(), key=lambda x: good_models[x]['test_mape'])
     else:
-        # Si ninguno tiene R² positivo, usar el de menor MAPE
+
         return min(ml_pipeline.models.keys(), key=lambda x: ml_pipeline.models[x]['test_mape'])
 
 mejor_modelo = get_best_model_name()
@@ -72,12 +70,12 @@ def get_predicciones_maiz():
     modelo_data = ml_pipeline.models[mejor_modelo]
     modelo = modelo_data['model']
     
-    # Preparar datos para predicción
+
     X = df[ml_pipeline.features].copy()
     X = ml_pipeline.clean_infinity_values(X)
     X = X.fillna(0)
     
-    # Aplicar escalado si es necesario
+
     if modelo_data['config']['use_scaling']:
         scaler = ml_pipeline.scalers['robust']
         X_scaled = scaler.transform(X)
@@ -106,7 +104,7 @@ def get_insights():
         else:
             return obj
     
-    # Combinar insights del EDA con insights del ML
+
     enhanced_insights = insights.copy()
     
     if ml_pipeline.models:
@@ -117,7 +115,7 @@ def get_insights():
             'dataset_size': len(ml_pipeline.df_ml) if ml_pipeline.df_ml is not None else 0
         }
         
-        # Añadir métricas del mejor modelo
+
         if mejor_modelo and mejor_modelo in ml_pipeline.models:
             best_metrics = ml_pipeline.models[mejor_modelo]
             enhanced_insights['ml_performance']['best_model_metrics'] = {
@@ -140,7 +138,7 @@ def get_mejor_modelo():
         "metricas": ml_pipeline.models[mejor_modelo] if mejor_modelo in ml_pipeline.models else None
     }
     
-    # Convertir numpy types
+
     if model_info["metricas"]:
         metrics = model_info["metricas"]
         model_info["metricas_clean"] = {
@@ -164,7 +162,7 @@ def predecir_precio_maiz(horizonte: int = Query(3, ge=1, le=12)):
     pred_std = modelo_data['pred_std']
     df_base = ml_pipeline.df_ml.copy()
 
-    # Inicializar con los últimos datos reales
+
     df_simulado = df_base.copy()
     fecha_actual = df_base.index[-1]
     predicciones = []
@@ -172,27 +170,26 @@ def predecir_precio_maiz(horizonte: int = Query(3, ge=1, le=12)):
     for i in range(1, horizonte + 1):
         nueva_fecha = fecha_actual + relativedelta(months=1)
 
-        # Crear un nuevo registro con fecha futura
         nueva_fila = df_simulado.iloc[[-1]].copy()
         nueva_fila.index = [nueva_fecha]
 
-        # Predecir usando los features actualizados
+
         df_simulado = pd.concat([df_simulado, nueva_fila])
 
-        # Recalcular todos los features
+
         df_features = ml_pipeline.engineer_enhanced_features(df_simulado)
 
-        # Usar solo la última fila para la predicción actual
+
         row = df_features.iloc[[-1]].copy()
         row = ml_pipeline.clean_infinity_values(row)
 
-        # Rellenar faltantes con medianas del entrenamiento
+
         if hasattr(ml_pipeline, "feature_medians"):
             row = row.fillna(ml_pipeline.feature_medians)
         else:
             row = row.fillna(method="ffill").fillna(method="bfill")
 
-        # Predicción
+
         X_pred = row[ml_pipeline.features]
         if modelo_data['config']['use_scaling']:
             scaler = ml_pipeline.scalers['robust']
@@ -201,7 +198,7 @@ def predecir_precio_maiz(horizonte: int = Query(3, ge=1, le=12)):
         else:
             y_pred = modelo.predict(X_pred.values)[0]
 
-        # Calcular intervalos de confianza
+
         confidence_factor = 1.96
         uncertainty_growth = np.sqrt(i)
         margin_error = confidence_factor * pred_std * uncertainty_growth
@@ -214,7 +211,7 @@ def predecir_precio_maiz(horizonte: int = Query(3, ge=1, le=12)):
             "confianza": round(100 / uncertainty_growth, 1)
         })
 
-        # Actualizar el dataframe con el nuevo valor predicho
+
         df_simulado.at[nueva_fecha, ml_pipeline.target] = y_pred
         fecha_actual = nueva_fecha
 
@@ -223,8 +220,6 @@ def predecir_precio_maiz(horizonte: int = Query(3, ge=1, le=12)):
         "modelo_usado": mejor_modelo,
         "predicciones": predicciones
     }
-
-
 
 @app.get("/api/escenarios")
 def obtener_escenarios():
@@ -290,7 +285,7 @@ def obtener_escenarios():
         nueva_fila = ultima_fila.copy()
         nueva_fila.index = [fecha_pred]
 
-        # Aplicar modificaciones del escenario
+
         for k, v in escenario["modificaciones"].items():
             nueva_fila[k] = v
 
@@ -330,7 +325,6 @@ def obtener_escenarios():
         "precio_base": round(precio_base, 2)
     }
 
-
 @app.get("/api/historico/maiz")
 def get_historico_maiz():
     """Obtiene datos históricos de maíz"""
@@ -364,7 +358,7 @@ def evaluacion_modelos():
         }
         resultados.append(resultado)
     
-    # Ordenar por MAPE
+
     resultados.sort(key=lambda x: x["MAPE"])
     
     return {
@@ -381,9 +375,9 @@ def get_feature_importance():
     
     importance = ml_pipeline.feature_importance[mejor_modelo]
     
-    # Convertir a formato API
+
     features_data = []
-    for feature, valor in importance.head(15).items():  # Top 15 features
+    for feature, valor in importance.head(15).items():  
         features_data.append({
             "feature": feature,
             "importancia": round(float(valor), 4),
@@ -433,7 +427,7 @@ def get_diagnosticos():
     
     return diagnosticos
 
-# Endpoint de salud
+
 @app.get("/api/health")
 def health_check():
     """Health check del API"""

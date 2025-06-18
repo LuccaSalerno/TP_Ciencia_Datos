@@ -7,7 +7,7 @@ import warnings
 import re
 warnings.filterwarnings('ignore')
 
-# Configuración de visualización
+
 plt.style.use('default')
 sns.set_palette("husl")
 plt.rcParams['figure.figsize'] = (15, 10)
@@ -23,14 +23,14 @@ class EDAMaizArcorMejorado:
         """Carga todos los datasets con manejo mejorado de errores"""
         print("🔄 Cargando datasets...")
         
-        # Tipo de cambio
+
         try:
             self.datasets['tipo_cambio'] = pd.read_csv(self.dataset_paths['tipo_cambio'])
             print("✅ Tipo de cambio cargado")
         except Exception as e:
             print(f"❌ Error cargando tipo_cambio: {e}")
             
-        # Datos de maíz - probar diferentes encodings
+
         try:
             encodings = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
             for encoding in encodings:
@@ -45,35 +45,34 @@ class EDAMaizArcorMejorado:
         except Exception as e:
             print(f"❌ Error cargando maiz_datos: {e}")
             
-        # IPC
+
         try:
             self.datasets['ipc'] = pd.read_csv(self.dataset_paths['ipc'])
             print("✅ IPC cargado")
         except Exception as e:
             print(f"❌ Error cargando IPC: {e}")
-            
-        # Clima - mejorar lectura de Excel
+
         try:
-            # Leer múltiples hojas si existen
+
             excel_file = pd.ExcelFile(self.dataset_paths['clima'])
             print(f"Hojas disponibles en clima: {excel_file.sheet_names}")
-            # Leer la primera hoja con datos
+            
             self.datasets['clima'] = pd.read_excel(self.dataset_paths['clima'], sheet_name=0, header=3)
             print("✅ Datos climáticos cargados")
         except Exception as e:
             print(f"❌ Error cargando clima: {e}")
             
-        # Precios Agrofy - parsing correcto del CSV
+
         try:
-            # El archivo parece tener formato especial con separadores ;
+
             self.datasets['agrofy_precios'] = pd.read_csv(self.dataset_paths['agrofy_precios'], 
                                                          sep=';', 
                                                          names=['Fecha', 'Mercado', 'Producto', 'Precio'],
                                                          skiprows=0)
-            # Si no funciona, probar como una sola columna y parsear manualmente
+
             if len(self.datasets['agrofy_precios'].columns) == 1:
                 df_temp = pd.read_csv(self.dataset_paths['agrofy_precios'], header=None)
-                # Parsear la columna única
+
                 parsed_data = []
                 for row in df_temp.iloc[:, 0]:
                     if pd.notna(row) and ';' in str(row):
@@ -95,18 +94,16 @@ class EDAMaizArcorMejorado:
         print("\n🔧 PROCESANDO DATASETS...")
         print("="*50)
         
-        # Procesar tipo de cambio
+
         if 'tipo_cambio' in self.datasets:
             df = self.datasets['tipo_cambio'].copy()
-            # Convertir fecha
             df['fecha'] = pd.to_datetime(df['indice_tiempo'])
             df = df.set_index('fecha')
-            # Usar el dólar estadounidense como principal (mejor cobertura)
             df['dolar_principal'] = df['dolar_estadounidense'].fillna(df['dolar_oficial_venta'])
             self.datasets_procesados['tipo_cambio'] = df
             print("✅ Tipo de cambio procesado")
         
-        # Procesar IPC
+
         if 'ipc' in self.datasets:
             df = self.datasets['ipc'].copy()
             df['fecha'] = pd.to_datetime(df['indice_tiempo'])
@@ -114,13 +111,13 @@ class EDAMaizArcorMejorado:
             self.datasets_procesados['ipc'] = df
             print("✅ IPC procesado")
         
-        # Procesar Agrofy (MAÍZ)
+
         if 'agrofy_precios' in self.datasets:
             df = self.datasets['agrofy_precios'].copy()
-            # Convertir fecha (formato dd-mm-yy)
+
             try:
                 df['fecha'] = pd.to_datetime(df['Fecha'], format='%d-%m-%y', errors='coerce')
-                # Si hay fechas con formato de 4 dígitos en año
+
                 mask_null = df['fecha'].isna()
                 if mask_null.sum() > 0:
                     df.loc[mask_null, 'fecha'] = pd.to_datetime(df.loc[mask_null, 'Fecha'], 
@@ -128,27 +125,25 @@ class EDAMaizArcorMejorado:
             except:
                 print("⚠️ Problema con formato de fechas en Agrofy")
             
-            # Extraer precio numérico
+
             df['precio_numerico'] = df['Precio'].str.extract(r'([0-9,\.]+)').astype(str)
             df['precio_numerico'] = df['precio_numerico'].str.replace(',', '.').astype(float)
             
-            # Filtrar solo maíz
+
             df_maiz = df[df['Producto'].str.contains('Maiz|maiz|MAIZ', case=False, na=False)]
             df_maiz = df_maiz.set_index('fecha').sort_index()
             
             self.datasets_procesados['agrofy_maiz'] = df_maiz
             print(f"✅ Agrofy procesado - {len(df_maiz)} registros de maíz")
         
-        # Procesar clima
+
         if 'clima' in self.datasets:
             df = self.datasets['clima'].copy()
-            # Limpiar y procesar datos climáticos
-            # Buscar filas con datos de estaciones
             df_clean = df.dropna(how='all')
             self.datasets_procesados['clima'] = df_clean
             print("✅ Clima procesado")
         
-        # Procesar maiz_datos si se cargó
+
         if 'maiz_datos' in self.datasets:
             df = self.datasets['maiz_datos'].copy()
             self.datasets_procesados['maiz_datos'] = df
@@ -167,12 +162,12 @@ class EDAMaizArcorMejorado:
             print(f"\n🔹 Dataset: {nombre}")
             print("-" * 40)
             
-            # Información general
+
             print(f"• Período de datos: {df.index.min()} a {df.index.max()}" if hasattr(df.index, 'min') else "• Índice no es fecha")
             print(f"• Total de registros: {len(df):,}")
             print(f"• Columnas: {list(df.columns)}")
             
-            # Estadísticas numéricas
+
             num_cols = df.select_dtypes(include=['number']).columns
             if len(num_cols) > 0:
                 print("\n  → Estadísticas numéricas:")
@@ -183,7 +178,7 @@ class EDAMaizArcorMejorado:
             else:
                 print("  → No hay columnas numéricas")
             
-            # Estadísticas categóricas
+
             cat_cols = df.select_dtypes(include=['object', 'category']).columns
             if len(cat_cols) > 0:
                 print("\n  → Estadísticas categóricas (top 3 valores más frecuentes):")
@@ -218,13 +213,13 @@ class EDAMaizArcorMejorado:
             print(f"• Precio máximo: U$S {precios_stats['max']:.2f}")
             print(f"• Desviación estándar: U$S {precios_stats['std']:.2f}")
             
-            # Análisis por mercado
+
             print(f"\n🏢 ANÁLISIS POR MERCADO:")
             print("-" * 30)
             mercado_stats = df_maiz.groupby('Mercado')['precio_numerico'].agg(['count', 'mean', 'std'])
             print(mercado_stats.round(2))
             
-            # Tendencia temporal
+
             print(f"\n📈 TENDENCIA TEMPORAL:")
             print("-" * 25)
             df_maiz_monthly = df_maiz.resample('M')['precio_numerico'].mean()
@@ -245,11 +240,11 @@ class EDAMaizArcorMejorado:
         print("📊 CREANDO VISUALIZACIONES MEJORADAS")
         print("="*60)
         
-        # Crear figura con subplots
+
         fig, axes = plt.subplots(3, 3, figsize=(20, 18))
         fig.suptitle('🌽 ANÁLISIS EXPLORATORIO - PREDICCIÓN PRECIOS MAÍZ ARCOR', fontsize=16, fontweight='bold')
         
-        # 1. Evolución precio del maíz
+
         if 'agrofy_maiz' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz']
             df_maiz_monthly = df_maiz.resample('M')['precio_numerico'].mean()
@@ -260,10 +255,10 @@ class EDAMaizArcorMejorado:
             axes[0,0].grid(True, alpha=0.3)
             axes[0,0].tick_params(axis='x', rotation=45)
         
-        # 2. Distribución de precios del maíz
+
         if 'agrofy_maiz' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz']
-            precio_actual = df_maiz['precio_numerico'].iloc[-1]  # Último precio disponible
+            precio_actual = df_maiz['precio_numerico'].iloc[-1]  
 
             axes[0,1].hist(df_maiz['precio_numerico'], bins=30, alpha=0.7, color='orange', edgecolor='black')
             axes[0,1].axvline(precio_actual, color='red', linestyle='--', linewidth=2, label=f'Precio actual: U$S {precio_actual:.2f}')
@@ -273,18 +268,17 @@ class EDAMaizArcorMejorado:
             axes[0,1].set_ylabel('Frecuencia')
             axes[0,1].grid(True, alpha=0.3)
         
-        # 3. Precios por mercado
+
         if 'agrofy_maiz' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz']
             
-            # Filtro para eliminar outliers extremos
             df_maiz_filtrado = df_maiz[df_maiz['precio_numerico'] <= 500]
 
             df_maiz_filtrado.boxplot(
                 column='precio_numerico',
                 by='Mercado',
                 ax=axes[0,2],
-                patch_artist=True,  # permite aplicar color
+                patch_artist=True,
                 boxprops=dict(facecolor='lightgreen', color='black'),
                 medianprops=dict(color='black'),
                 whiskerprops=dict(color='black'),
@@ -297,11 +291,11 @@ class EDAMaizArcorMejorado:
             axes[0,2].tick_params(axis='x', rotation=45)
 
         
-        # 4. Evolución tipo de cambio
+
         if 'tipo_cambio' in self.datasets_procesados:
             df_tc = self.datasets_procesados['tipo_cambio']
             df_tc_monthly = df_tc['dolar_principal'].resample('M').mean()
-            # Filtrar últimos 5 años para mejor visualización
+
             df_tc_recent = df_tc_monthly.last('60M')
             
             axes[1,0].plot(df_tc_recent.index, df_tc_recent.values, linewidth=2, color='blue')
@@ -310,7 +304,7 @@ class EDAMaizArcorMejorado:
             axes[1,0].grid(True, alpha=0.3)
             axes[1,0].tick_params(axis='x', rotation=45)
         
-        # 5. Evolución IPC
+
         if 'ipc' in self.datasets_procesados:
             df_ipc = self.datasets_procesados['ipc']
             axes[1,1].plot(df_ipc.index, df_ipc['ipc_ng_nacional_tasa_variacion_mensual'], linewidth=2, color='red')
@@ -320,7 +314,7 @@ class EDAMaizArcorMejorado:
             axes[1,1].tick_params(axis='x', rotation=45)
 
         
-        # 6. Correlación precio maíz vs tipo de cambio
+
         if 'agrofy_maiz' in self.datasets_procesados and 'tipo_cambio' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz'].resample('M')['precio_numerico'].mean()
             df_tc = self.datasets_procesados['tipo_cambio']['dolar_principal'].resample('M').mean()
@@ -330,7 +324,7 @@ class EDAMaizArcorMejorado:
             if len(df_combined) > 0:
                 axes[1,2].scatter(df_combined['tipo_cambio'], df_combined['maiz'], alpha=0.6, color='purple', label='Observaciones')
                 
-                # Línea de regresión
+
                 m, b = np.polyfit(df_combined['tipo_cambio'], df_combined['maiz'], 1)
                 axes[1,2].plot(df_combined['tipo_cambio'], m*df_combined['tipo_cambio'] + b, color='orange', linestyle='--', label='Regresión lineal')
                 axes[1,2].legend()
@@ -346,7 +340,7 @@ class EDAMaizArcorMejorado:
                             bbox=dict(boxstyle="round,pad=0.3", facecolor="yellow", alpha=0.5))
 
         
-        # 7. Estacionalidad del maíz
+
         if 'agrofy_maiz' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz']
             df_maiz['mes'] = df_maiz.index.month
@@ -361,7 +355,7 @@ class EDAMaizArcorMejorado:
             axes[2,0].grid(True, alpha=0.3)
 
         
-        # 8. Volatilidad del precio del maíz
+
         if 'agrofy_maiz' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz']
             df_maiz_monthly = df_maiz.resample('M')['precio_numerico'].agg(['mean', 'std'])
@@ -376,10 +370,10 @@ class EDAMaizArcorMejorado:
             axes[2,1].tick_params(axis='x', rotation=45)
             axes[2,1].legend()
         
-        # 9. Resumen estadístico
+
         axes[2,2].axis('off')
         
-        # Texto de resumen
+
         resumen_text = "📋 RESUMEN EJECUTIVO\n\n"
         
         if 'agrofy_maiz' in self.datasets_procesados:
@@ -420,24 +414,24 @@ class EDAMaizArcorMejorado:
         
         insights = {}
         
-        # Análisis de maíz
+
         if 'agrofy_maiz' in self.datasets_procesados:
             df_maiz = self.datasets_procesados['agrofy_maiz']
             
             print(f"\n🌽 ANÁLISIS PREDICTIVO DEL MAÍZ:")
             print("-" * 40)
             
-            # Tendencia
+
             df_monthly = df_maiz.resample('M')['precio_numerico'].mean()
             df_monthly = df_monthly.dropna()
             tendencia = np.polyfit(range(len(df_monthly)), df_monthly.values, 1)[0]
             print(f"• Tendencia mensual: U$S {tendencia:.2f} por mes")
             
-            # Volatilidad
+
             volatilidad = df_maiz['precio_numerico'].std()
             print(f"• Volatilidad histórica: U$S {volatilidad:.2f}")
             
-            # Estacionalidad
+
             df_maiz['mes'] = df_maiz.index.month
             estacionalidad = df_maiz.groupby('mes')['precio_numerico'].mean()
             mes_mas_caro = estacionalidad.idxmax()
@@ -452,12 +446,12 @@ class EDAMaizArcorMejorado:
                 'mes_mas_barato': mes_mas_barato
             }
         
-        # Correlaciones cruzadas
+
         print(f"\n🔗 CORRELACIONES PARA PREDICCIÓN:")
         print("-" * 40)
         
         if 'agrofy_maiz' in self.datasets_procesados and 'tipo_cambio' in self.datasets_procesados:
-            # Alinear datos
+
             df_maiz_m = self.datasets_procesados['agrofy_maiz'].resample('M')['precio_numerico'].mean()
             df_tc_m = self.datasets_procesados['tipo_cambio']['dolar_principal'].resample('M').mean()
             
@@ -469,7 +463,7 @@ class EDAMaizArcorMejorado:
                 insights['correlacion_tipo_cambio'] = corr_tc
         
         if 'agrofy_maiz' in self.datasets_procesados and 'ipc' in self.datasets_procesados:
-            # Correlación con IPC
+
             df_maiz_m = self.datasets_procesados['agrofy_maiz'].resample('M')['precio_numerico'].mean()
             df_ipc_m = self.datasets_procesados['ipc']['ipc_ng_nacional'].resample('M').mean()
             
@@ -487,17 +481,17 @@ class EDAMaizArcorMejorado:
         print("🌽 ANÁLISIS EXPLORATORIO - PREDICCIÓN PRECIOS MAÍZ ARCOR")
         print("=" * 80)
         
-        # Cargar y procesar datos
+
         self.cargar_datos()
         self.procesar_datasets()
         
         self.analisis_datasets()
         df_maiz = self.analisis_maiz_detallado()
         
-        # Crear visualizaciones mejoradas
+
         self.crear_visualizaciones_mejoradas()
         
-        # Generar insights predictivos
+
         insights = self.generar_insights_predictivos()
         
         print(f"\n✅ EDA MEJORADO COMPLETADO EXITOSAMENTE")
