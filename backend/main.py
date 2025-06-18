@@ -18,11 +18,4 @@ insights, df_maiz = eda_mejorado.ejecutar_eda_completo_mejorado()
 EnhancedRobustCornPipeline = EnhancedRobustCornPipeline(eda_mejorado)
 EnhancedRobustCornPipeline.run_complete_analysis()
 
-# print(EnhancedRobustCornPipeline.models)
-
-# ml_extension.validacion_cruzada_temporal_xgboost(n_splits=5)
-# graficar_resultados(ml_extension)
-
-
-# print(f"🎉 ¡Pipeline completo listo!")
-# print(f"🏆 Mejor modelo: {mejor_modelo}")
+graficar_resultados(EnhancedRobustCornPipeline)

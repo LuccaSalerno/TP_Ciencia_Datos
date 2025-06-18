@@ -86,7 +86,7 @@ def get_predicciones_maiz():
         y_pred = modelo.predict(X.values)
     
     df['prediccion'] = y_pred
-    df = df.tail(24).reset_index()
+    df = df.tail(60).reset_index()
     df['fecha'] = df['fecha'].astype(str)
     
     return df[['fecha', 'precio_maiz', 'prediccion']].rename(
@@ -340,7 +340,7 @@ def get_historico_maiz():
     df_maiz = ml_pipeline.df_ml.copy()
     df_maiz = df_maiz.reset_index()
     df_maiz['fecha'] = df_maiz['fecha'].astype(str)
-    df_maiz = df_maiz.tail(24)
+    df_maiz = df_maiz.tail(60)
     
     return df_maiz[['fecha', 'precio_maiz']].to_dict(orient="records")
 

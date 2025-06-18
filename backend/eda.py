@@ -255,7 +255,7 @@ class EDAMaizArcorMejorado:
             df_maiz_monthly = df_maiz.resample('M')['precio_numerico'].mean()
             
             axes[0,0].plot(df_maiz_monthly.index, df_maiz_monthly.values, linewidth=2, color='green')
-            axes[0,0].set_title('📈 Evolución Precio Maíz (Mensual)', fontweight='bold')
+            axes[0,0].set_title('Evolución Precio Maíz (Mensual)', fontweight='bold')
             axes[0,0].set_ylabel('Precio (U$S)')
             axes[0,0].grid(True, alpha=0.3)
             axes[0,0].tick_params(axis='x', rotation=45)
@@ -268,7 +268,7 @@ class EDAMaizArcorMejorado:
             axes[0,1].hist(df_maiz['precio_numerico'], bins=30, alpha=0.7, color='orange', edgecolor='black')
             axes[0,1].axvline(precio_actual, color='red', linestyle='--', linewidth=2, label=f'Precio actual: U$S {precio_actual:.2f}')
             axes[0,1].legend()
-            axes[0,1].set_title('📊 Distribución Precios Maíz (Histograma)', fontweight='bold')
+            axes[0,1].set_title('Distribución Precios Maíz (Histograma)', fontweight='bold')
             axes[0,1].set_xlabel('Precio (U$S)')
             axes[0,1].set_ylabel('Frecuencia')
             axes[0,1].grid(True, alpha=0.3)
@@ -305,7 +305,7 @@ class EDAMaizArcorMejorado:
             df_tc_recent = df_tc_monthly.last('60M')
             
             axes[1,0].plot(df_tc_recent.index, df_tc_recent.values, linewidth=2, color='blue')
-            axes[1,0].set_title('💱 Evolución Tipo de Cambio (5 años)', fontweight='bold')
+            axes[1,0].set_title('Evolución Tipo de Cambio (5 años)', fontweight='bold')
             axes[1,0].set_ylabel('Pesos por Dólar')
             axes[1,0].grid(True, alpha=0.3)
             axes[1,0].tick_params(axis='x', rotation=45)
@@ -314,7 +314,7 @@ class EDAMaizArcorMejorado:
         if 'ipc' in self.datasets_procesados:
             df_ipc = self.datasets_procesados['ipc']
             axes[1,1].plot(df_ipc.index, df_ipc['ipc_ng_nacional_tasa_variacion_mensual'], linewidth=2, color='red')
-            axes[1,1].set_title('📉 Inflación Mensual (IPC Nacional)', fontweight='bold')
+            axes[1,1].set_title('Inflación Mensual (IPC Nacional)', fontweight='bold')
             axes[1,1].set_ylabel('Variación Mensual (%)')
             axes[1,1].grid(True, alpha=0.3)
             axes[1,1].tick_params(axis='x', rotation=45)
@@ -353,7 +353,7 @@ class EDAMaizArcorMejorado:
             monthly_avg = df_maiz.groupby('mes')['precio_numerico'].mean()
             
             axes[2,0].bar(monthly_avg.index, monthly_avg.values, color='green', alpha=0.7)
-            axes[2,0].set_title('🗓️ Estacionalidad Precios Maíz', fontweight='bold')
+            axes[2,0].set_title('Estacionalidad Precios Maíz', fontweight='bold')
             axes[2,0].set_xlabel('Mes')
             axes[2,0].set_ylabel('Precio Promedio (U$S)')
             axes[2,0].set_xticks(range(1, 13))
@@ -370,7 +370,7 @@ class EDAMaizArcorMejorado:
             axes[2,1].plot(df_maiz_monthly.index, df_maiz_monthly['std'], linewidth=1, color='red', alpha=0.5, label='Volatilidad')
             axes[2,1].plot(df_maiz_monthly.index, df_maiz_monthly['std_smooth'], linewidth=2, color='darkred', label='Suavizada (3 meses)')
             
-            axes[2,1].set_title('📊 Volatilidad Precio Maíz', fontweight='bold')
+            axes[2,1].set_title('Volatilidad Precio Maíz', fontweight='bold')
             axes[2,1].set_ylabel('Desviación Estándar')
             axes[2,1].grid(True, alpha=0.3)
             axes[2,1].tick_params(axis='x', rotation=45)

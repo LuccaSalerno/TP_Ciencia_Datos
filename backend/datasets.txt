@@ -1,4 +1,3 @@
-https://dinem.magyp.gob.ar/dinem_fas.cfas_all.aspx
 https://|datos.gob.ar/dataset/sspm-indice-precios-al-consumidor-nacional-ipc-base-diciembre-2016/archivo/sspm_145.3
 https://datos.magyp.gob.ar/dataset/maiz-siembra-cosecha-rendimiento-produccion/archivo/c4696e28-4e54-464b-bc3b-19c608371231
 https://www.smn.gob.ar/descarga-de-datos
